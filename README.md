@@ -26,7 +26,7 @@ src/
 │   │   └── +server.ts            # CORS回避用・RSSパース代行API（エンドポイント）
 │   ├── settings/
 │   │   └── +page.svelte          # フィードURLの追加・削除を行う設定画面
-│   ├── +layout.svelte            # アプリ全体の共通レイアウト（ミントグリーン背景など）
+│   ├── +layout.svelte            # アプリ全体の共通レイアウト
 │   └── +page.svelte              # メイン画面（タブ切り替え・記事リスト表示）
 ```
 
