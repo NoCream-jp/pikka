@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation'; // 💡 追加
-  import { authManager } from '$lib/states/auth.svelte'; // 💡 追加
-  import { supabase } from '$lib/supabaseClient'; // 💡 追加
+  import { goto } from '$app/navigation';
+  import { authManager } from '$lib/states/auth.svelte';
+  import { supabase } from '$lib/supabaseClient';
   import { ArticleManager } from '$lib/states/article.svelte';
   import ArticleCard from '$lib/components/ArticleCard.svelte';
 
