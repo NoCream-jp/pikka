@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte'; // 💡 onMountを追加
+  import { onMount } from 'svelte';
   import { ArticleManager } from '$lib/states/article.svelte';
   import ArticleCard from '$lib/components/ArticleCard.svelte';
 
   const manager = new ArticleManager();
   let searchQuery = $state('');
-
-  // 💡 画面が開かれたら記事を読み込む
+  
   onMount(() => {
     manager.loadArticles();
   });

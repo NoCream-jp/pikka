@@ -1,43 +1,62 @@
-# sv
+# 📖 pikka - アプリケーションロジック仕様
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+「知りたいニュースを、知りたいときに。」をコンセプトにしたRSSリーダーアプリ「pikka」の、システム構成および状態管理ロジックのドキュメントです。
+Svelte 5 の最新機能（Runes）と、Supabase を用いたモダンなフルスタック構成を採用しています。
 
-## Creating a project
+## ⚙️ システム・アーキテクチャ（データフロー）
 
-If you're seeing this, you've probably already done this step. Congrats!
+アプリは以下の3つの層で連携して動作します。
 
-```sh
-# create a new project
-npx sv create my-app
+1. **Database 層 (Supabase):** ユーザーが登録した購読先（RSSフィードのURLとサイト名）を永続化。
+2. **API 層 (SvelteKit サーバーサイド):** ブラウザのCORS制限を回避し、外部サイトからXML形式のRSSデータを取得・解析（JSON化）してフロントエンドへ渡す中継役。
+3. **Client 層 (Svelte 5 `$state`):** データベースの購読リストを元にAPIを並列で叩き、取得した記事群をマージ・ソートして画面に描画。
+
+## 📂 主要なディレクトリ構成と役割
+
+```text
+src/
+├── lib/
+│   ├── components/
+│   │   └── ArticleCard.svelte    # 記事1件分のUI（見た目）をカプセル化したコンポーネント
+│   ├── states/
+│   │   └── article.svelte.ts     # 【中核】記事の取得・ソート・状態管理を担うロジッククラス
+│   └── supabaseClient.ts         # Supabaseとの接続設定
+├── routes/
+│   ├── api/rss/
+│   │   └── +server.ts            # CORS回避用・RSSパース代行API（エンドポイント）
+│   ├── settings/
+│   │   └── +page.svelte          # フィードURLの追加・削除を行う設定画面
+│   ├── +layout.svelte            # アプリ全体の共通レイアウト（ミントグリーン背景など）
+│   └── +page.svelte              # メイン画面（タブ切り替え・記事リスト表示）
 ```
 
-To recreate this project with the same configuration:
+---
 
-```sh
-# recreate this project
-npx sv@0.15.3 create --template minimal --types ts --add prettier eslint --install npm pikka
-```
+## 🧠 コアモジュールの詳細解説
 
-## Developing
+### 1. 状態管理ロジック (`src/lib/states/article.svelte.ts`)
+Svelte 5 の Runes (`$state`) を用いて、UI（`.svelte`）からロジック（`.ts`）を完全に分離するアーキテクチャを採用しています。
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+* **クラスベースの設計:** `ArticleManager` クラスにデータと操作（メソッド）を隠蔽しています。
+* **`loadArticles()` メソッド:** アプリの心臓部となる非同期処理です。
+  1. Supabaseから `feeds`（登録済みURL一覧）を取得。
+  2. 各URLに対して自作API（`/api/rss`）へリクエストを送信。この時、`Promise.all` を用いて**完全な並列処理**を行うことで、登録サイトが増えても高速にデータを収集します。
+  3. 各サイトから返ってきた記事データに「サイト名」を付与してフラットな1つの配列に合体させます。
+  4. 記事の公開日時（`publishedAt`）を元に、新しい順（降順）にソートして `$state` を更新します。
+* **`toggleBookmark(id)` メソッド:** 記事のしおり（ストック）状態を反転させます。UIは即座にリアクティブに切り替わります。
 
-```sh
-npm run dev
+### 2. RSSパース代行API (`src/routes/api/rss/+server.ts`)
+フロントエンドから直接外部ドメインのRSS（`zenn.dev` など）へアクセスすると発生するCORSエラーを回避するため、SvelteKitのサーバー機能を利用したプロキシAPIです。
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+* `npm install rss-parser` で導入したライブラリを使用。
+* クライアントから `?url=...` で渡された対象のURLへサーバー側からフェッチし、複雑なXMLデータを扱いやすいJSON配列（サイトタイトル、記事一覧）に変換して返却します。
 
-## Building
+### 3. データベーススキーマ (`Supabase`)
+現在、情報を管理する大元のテーブルとして `feeds` テーブルを運用しています。
 
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
-> "# pikka"
+| カラム名 | 型 | 制約 | 役割 |
+| :--- | :--- | :--- | :--- |
+| `id` | `bigint` | Primary Key | 自動採番される一意のID |
+| `title` | `text` | Not Null | サイトのタイトル（API経由で自動取得した名称） |
+| `url` | `text` | Unique, Not Null | RSSフィードのURL（重複登録を防止） |
+| `created_at` | `timestamptz` | Default `now()` | 登録日時 |

@@ -79,11 +79,7 @@
 </script>
 
 <div class="mx-auto max-w-2xl">
-  <header class="mb-10 flex items-center justify-between">
-    <div>
-      <h1 class="text-3xl font-extrabold tracking-tight text-slate-700">詳細設定</h1>
-      <p class="mt-1 text-sm font-medium text-slate-500">フィードの管理とカスタマイズ</p>
-    </div>
+  <header class="mb-10 flex items-center justify-start gap-10">
     <a
       href="/"
       class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
@@ -98,6 +94,10 @@
         />
       </svg>
     </a>
+    <div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-slate-700">詳細設定</h1>
+      <p class="mt-1 text-sm font-medium text-slate-500">フィードの管理とカスタマイズ</p>
+    </div>
   </header>
 
   <section class="mb-12">
