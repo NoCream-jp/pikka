@@ -41,23 +41,27 @@
   }
 </script>
 
-<div class="mx-auto max-w-4xl px-4 py-8">
-  <div class="mb-6">
+<div class="mx-auto max-w-2xl px-4 py-8">
+  <header class="mb-10 flex items-center gap-6">
     <a
       href="/"
-      class="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-800"
+      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+      aria-label="戻る"
     >
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
           stroke-width="2.5"
-          d="M15 19l-7-7 7-7"
+          d="M10 19l-7-7m0 0l7-7m-7 7h18"
         />
       </svg>
-      タイムラインに戻る
     </a>
-  </div>
+    <div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-700 sm:text-3xl">マイページ</h1>
+      <p class="mt-1 text-xs font-medium text-slate-500 sm:text-sm">アカウント情報とストック管理</p>
+    </div>
+  </header>
 
   <div class="mb-10 rounded-3xl bg-white p-8 shadow-sm">
     <div class="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">

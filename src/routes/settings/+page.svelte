@@ -78,12 +78,12 @@
   }
 </script>
 
-<div class="mx-auto max-w-2xl">
-  <header class="mb-10 flex items-center justify-start gap-10">
+<div class="mx-auto max-w-2xl px-4 py-8">
+  <header class="mb-10 flex items-center gap-6">
     <a
       href="/"
-      class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
-      aria-label="link"
+      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+      aria-label="戻る"
     >
       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -95,8 +95,8 @@
       </svg>
     </a>
     <div>
-      <h1 class="text-3xl font-extrabold tracking-tight text-slate-700">詳細設定</h1>
-      <p class="mt-1 text-sm font-medium text-slate-500">フィードの管理とカスタマイズ</p>
+      <h1 class="text-2xl font-extrabold tracking-tight text-slate-700 sm:text-3xl">詳細設定</h1>
+      <p class="mt-1 text-xs font-medium text-slate-500 sm:text-sm">フィードの管理とカスタマイズ</p>
     </div>
   </header>
 
