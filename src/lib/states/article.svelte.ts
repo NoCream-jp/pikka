@@ -7,7 +7,8 @@ export type Article = {
   url: string; // 記事のリンク
   siteName: string; // 取得元のサイト名
   publishedAt: number; // 公開日時（ソート用に数値化）
-  isBookmarked: boolean;
+  isBookmarked: boolean; // ストックされたかどうか
+  thumbnailUrl: string; // サムネURL
 };
 
 export class ArticleManager {
@@ -65,8 +66,9 @@ export class ArticleManager {
               url: item.link || '',
               siteName: feed.title,
               publishedAt: new Date(item.pubDate || item.isoDate || Date.now()).getTime(),
-              // 💡 取得した記事IDが、DBのしおりリストに含まれていれば true にする
-              isBookmarked: bookmarkedIds.has(articleId)
+              // 取得した記事IDが、DBのしおりリストに含まれていれば true にする
+              isBookmarked: bookmarkedIds.has(articleId),
+              thumbnailUrl: item.thumbnailUrl || ''
             };
           });
         } catch (e) {

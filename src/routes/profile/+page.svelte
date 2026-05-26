@@ -117,7 +117,7 @@
 
   <div class="mb-6">
     <h3 class="mb-4 flex items-center gap-2 text-xl font-extrabold text-slate-600/80">
-      <svg class="h-5 w-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
         <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
       </svg>
       ストックした記事 ({manager.filteredArticles.length})

@@ -13,7 +13,20 @@
 <article
   class="flex items-center gap-4 rounded-2xl bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
 >
-  <div class="bg-liner-to-br h-16 w-24 shrink-0 rounded-xl from-blue-600 to-teal-300"></div>
+  {#if article.thumbnailUrl}
+    <img
+      src={article.thumbnailUrl}
+      alt={article.title}
+      class="h-16 w-24 shrink-0 rounded-xl bg-slate-100 object-cover shadow-sm"
+      loading="lazy"
+    />
+  {:else}
+    <div
+      class="bg-liner-to-br flex h-16 w-24 shrink-0 items-center justify-center rounded-xl from-teal-500/20 to-blue-500/20 text-xs font-bold text-teal-600/40"
+    >
+      No Image
+    </div>
+  {/if}
 
   <div class="flex-1 overflow-hidden">
     <p class="mb-1 truncate text-xs font-bold text-teal-600/80">
