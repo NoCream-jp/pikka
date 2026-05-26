@@ -6,7 +6,7 @@
     onToggleBookmark
   }: {
     article: Article;
-    onToggleBookmark: (id: string) => void; // numberからstringに変更
+    onToggleBookmark: (id: string) => void;
   } = $props();
 </script>
 
