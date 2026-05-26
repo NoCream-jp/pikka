@@ -29,21 +29,35 @@
     event.preventDefault();
     if (!newFeedUrl.trim()) return;
 
-    // 💡 後でRSSの中身を解析して本物のサイト名を取得する処理を追加しますが、今は仮のタイトルを入れます
-    const tempTitle = '新規フィード (タイトル未取得)';
+    isLoading = true; // 読み込み中のUIを表示
 
-    const { data, error } = await supabase
-      .from('feeds')
-      .insert([{ url: newFeedUrl, title: tempTitle }])
-      .select();
+    try {
+      // 1. さきほど自作したAPIを叩いて、RSSの本物のデータを取得する
+      const response = await fetch(`/api/rss?url=${encodeURIComponent(newFeedUrl)}`);
+      if (!response.ok) throw new Error('RSSの取得に失敗しました');
 
-    if (error) {
-      console.error('追加エラー:', error.message);
-      alert('エラーが発生しました（すでに登録されているURLかもしれません）');
-    } else if (data) {
-      // 成功したら、リストの先頭に新しいデータを追加して入力欄を空にする
-      rssFeeds = [data[0], ...rssFeeds];
-      newFeedUrl = '';
+      const feedData = await response.json();
+
+      // 取得したサイト名（なければ「タイトルなし」）
+      const realTitle = feedData.title || 'タイトルなし';
+
+      // 2. 取得した本物のタイトルと一緒に Supabase に保存
+      const { data, error } = await supabase
+        .from('feeds')
+        .insert([{ url: newFeedUrl, title: realTitle }])
+        .select();
+
+      if (error) throw error;
+
+      if (data) {
+        rssFeeds = [data[0], ...rssFeeds]; // 画面のリストに追加
+        newFeedUrl = ''; // 入力欄をクリア
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました。URLが正しいか、すでに登録されていないか確認してください。');
+    } finally {
+      isLoading = false; // 読み込み中のUIを解除
     }
   }
 
