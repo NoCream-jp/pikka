@@ -1,0 +1,10 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "pikka",
+    "compatibility_date": "2024-05-26",
+    "main": ".svelte-kit/cloudflare/_worker.js",
+    "assets": {
+      "binding": "ASSETS",
+      "directory": ".svelte-kit/cloudflare"
+    }
+  }

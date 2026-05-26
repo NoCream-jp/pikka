@@ -6,7 +6,7 @@
   let { children } = $props();
 
   onMount(() => {
-    authManager.init(); // 💡 アプリが開かれた瞬間にログイン状態をチェック
+    authManager.init(); // アプリが開かれた瞬間にログイン状態をチェック
   });
 </script>
 
