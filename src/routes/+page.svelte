@@ -18,14 +18,14 @@
     manager.loadArticles();
   });
 
-  // ログアウト処理
-  async function signOut() {
-    await supabase.auth.signOut();
-    goto('/login');
+  // 詳細設定ページ
+  async function goToSettings() {
+    goto('/settings');
   }
 
-  async function goToMypage() {
-    goto('/settings');
+  // マイページ
+  async function goToProfile() {
+    goto('/profile');
   }
 </script>
 
@@ -65,7 +65,7 @@
       />
     </div>
     <button
-      onclick={goToMypage}
+      onclick={goToProfile}
       class="bg-liner-to-br h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white bg-red-200 shadow-sm transition-transform hover:scale-105"
       title="マイページへ"
       aria-label="logout"
@@ -96,7 +96,7 @@
       href="/settings"
       class="flex flex-col items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-600 shadow-sm transition-transform hover:scale-105"
     >
-      <button class="flex items-center gap-5" aria-label="詳細設定ページへ" onclick={goToMypage}>
+      <button class="flex items-center gap-5" aria-label="詳細設定ページへ" onclick={goToSettings}>
         詳細設定へ
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
