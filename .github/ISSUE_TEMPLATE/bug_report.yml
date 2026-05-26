@@ -1,7 +1,7 @@
 name: バグ報告
 description: 既存の機能が正しく動作しない場合の報告
-title: "[Bug]: "
-labels: ["bug"]
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: textarea
     id: description
@@ -33,4 +33,4 @@ body:
     attributes:
       label: 動作環境
       description: OSやブラウザ、アプリのバージョンなど
-      placeholder: "例: Windows 11 / Chrome 最新版"
+      placeholder: '例: Windows 11 / Chrome 最新版'

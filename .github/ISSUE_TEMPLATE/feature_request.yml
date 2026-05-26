@@ -1,7 +1,7 @@
 name: 機能リクエスト
 description: 新しい機能や改善の提案
-title: "[Feature]: "
-labels: ["enhancement"]
+title: '[Feature]: '
+labels: ['enhancement']
 body:
   - type: textarea
     id: problem

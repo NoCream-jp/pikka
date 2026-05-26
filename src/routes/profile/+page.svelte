@@ -12,7 +12,11 @@
   let isEditing = $state(false);
   let username = $state('');
 
-  onMount(() => {
+  onMount(async () => {
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
     // 未ログインならログイン画面へリダイレクト
     if (!authManager.user) {
       goto('/login');
