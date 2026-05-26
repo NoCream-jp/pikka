@@ -1,26 +1,66 @@
 <script lang="ts">
-  // 登録済みのRSSフィード（ダミーデータ）
-  let rssFeeds = $state([
-    { id: 1, title: 'Svelte公式ブログ', url: 'https://svelte.dev/blog/rss.xml' },
-    { id: 2, title: 'Zenn トレンド (Svelte)', url: 'https://zenn.dev/topics/svelte/feed' }
-  ]);
+  import { supabase } from '$lib/supabaseClient';
+  import { onMount } from 'svelte';
 
-  // 新規追加用の入力状態
+  // 状態管理（型を定義して安全にします）
+  type Feed = { id: number; title: string; url: string };
+
+  let rssFeeds = $state<Feed[]>([]);
   let newFeedUrl = $state('');
+  let isLoading = $state(true);
 
-  // フィードを追加する関数
-  function addFeed(event: Event) {
-    event.preventDefault(); // フォームの標準送信をブロック
+  // 画面が開かれた時に Supabase からデータを取得する
+  onMount(async () => {
+    const { data, error } = await supabase
+      .from('feeds')
+      .select('*')
+      .order('created_at', { ascending: false }); // 新しい順
+
+    if (error) {
+      console.error('取得エラー:', error.message);
+    } else {
+      rssFeeds = data || [];
+    }
+    isLoading = false;
+  });
+
+  // Supabase へフィードを追加する関数
+  async function addFeed(event: Event) {
+    event.preventDefault();
     if (!newFeedUrl.trim()) return;
 
-    // 仮の追加処理（本来はここでSupabaseに保存し、RSSのタイトルを取得します）
-    rssFeeds = [...rssFeeds, { id: Date.now(), title: '新しいフィード', url: newFeedUrl }];
-    newFeedUrl = ''; // 入力欄をクリア
+    // 💡 後でRSSの中身を解析して本物のサイト名を取得する処理を追加しますが、今は仮のタイトルを入れます
+    const tempTitle = '新規フィード (タイトル未取得)';
+
+    const { data, error } = await supabase
+      .from('feeds')
+      .insert([{ url: newFeedUrl, title: tempTitle }])
+      .select();
+
+    if (error) {
+      console.error('追加エラー:', error.message);
+      alert('エラーが発生しました（すでに登録されているURLかもしれません）');
+    } else if (data) {
+      // 成功したら、リストの先頭に新しいデータを追加して入力欄を空にする
+      rssFeeds = [data[0], ...rssFeeds];
+      newFeedUrl = '';
+    }
   }
 
-  // フィードを削除する関数
-  function removeFeed(id: number) {
+  // Supabase からフィードを削除する関数
+  async function removeFeed(id: number) {
+    // 画面上のリストから即座に消す（UX向上のため、通信を待たずにUIを更新）
+    const previousFeeds = [...rssFeeds];
     rssFeeds = rssFeeds.filter((feed) => feed.id !== id);
+
+    // バックグラウンドでデータベースから削除
+    const { error } = await supabase.from('feeds').delete().eq('id', id);
+
+    if (error) {
+      console.error('削除エラー:', error.message);
+      alert('削除に失敗しました。');
+      rssFeeds = previousFeeds; // 失敗したら元に戻す
+    }
   }
 </script>
 
@@ -33,7 +73,7 @@
     <a
       href="/"
       class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
-      aria-label="ホームに戻る"
+      aria-label="link"
     >
       <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -63,20 +103,27 @@
       <input
         type="url"
         bind:value={newFeedUrl}
-        placeholder="https://example.com/rss.xml"
+        placeholder="https://zenn.dev/topics/svelte/feed"
         class="h-12 flex-1 rounded-xl border-none bg-white px-4 font-medium text-slate-700 shadow-sm transition-shadow outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-teal-400/50"
         required
       />
       <button
         type="submit"
-        class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700"
+        disabled={isLoading}
+        class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
       >
         追加する
       </button>
     </form>
 
     <div class="flex flex-col gap-3">
-      {#if rssFeeds.length === 0}
+      {#if isLoading}
+        <div
+          class="animate-pulse rounded-2xl bg-white p-6 text-center text-sm font-medium text-slate-400 shadow-sm"
+        >
+          読み込み中...
+        </div>
+      {:else if rssFeeds.length === 0}
         <div
           class="rounded-2xl bg-white p-6 text-center text-sm font-medium text-slate-400 shadow-sm"
         >
@@ -85,7 +132,9 @@
       {/if}
 
       {#each rssFeeds as feed (feed.id)}
-        <div class="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
+        <div
+          class="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm transition-all hover:shadow-md"
+        >
           <div class="flex-1 overflow-hidden">
             <p class="truncate font-bold text-slate-700">{feed.title}</p>
             <p class="mt-0.5 truncate text-xs font-medium text-slate-400">{feed.url}</p>
