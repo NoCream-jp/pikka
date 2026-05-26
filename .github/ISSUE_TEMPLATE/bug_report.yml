@@ -1,0 +1,36 @@
+name: バグ報告
+description: 既存の機能が正しく動作しない場合の報告
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: バグの概要
+      description: 何が起きているか、簡潔に教えてください。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 再現手順
+      description: バグを再現するための具体的な手順を書いてください。
+      value: |
+        1. '...' にアクセスする
+        2. '...' ボタンをクリックする
+        3. エラーが発生する
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待される動作
+      description: 本来はどうなるべきでしたか？
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 動作環境
+      description: OSやブラウザ、アプリのバージョンなど
+      placeholder: "例: Windows 11 / Chrome 最新版"
