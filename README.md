@@ -63,3 +63,9 @@ Svelte 5 の Runes (`$state`) を用いて、UI（`.svelte`）からロジック
 | `title`      | `text`        | Not Null         | サイトのタイトル（API経由で自動取得した名称） |
 | `url`        | `text`        | Unique, Not Null | RSSフィードのURL（重複登録を防止）            |
 | `created_at` | `timestamptz` | Default `now()`  | 登録日時                                      |
+
+## この先実装したいロジック
+
+- URLフィードの検索補助
+- トップでの一致検索
+- フィルターとソートの機能分け

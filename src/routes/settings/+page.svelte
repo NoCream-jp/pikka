@@ -78,7 +78,7 @@
   }
 </script>
 
-<div class="mx-auto max-w-2xl px-4 py-8">
+<div class="max-w-2xl px-4 py-8">
   <header class="mb-10 flex items-center gap-6">
     <a
       href="/"
