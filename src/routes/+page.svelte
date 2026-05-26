@@ -1,14 +1,32 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation'; // 💡 追加
+  import { authManager } from '$lib/states/auth.svelte'; // 💡 追加
+  import { supabase } from '$lib/supabaseClient'; // 💡 追加
   import { ArticleManager } from '$lib/states/article.svelte';
   import ArticleCard from '$lib/components/ArticleCard.svelte';
 
   const manager = new ArticleManager();
   let searchQuery = $state('');
-  
+
   onMount(() => {
+    // ログインしていなければログイン画面へ弾く
+    if (!authManager.user) {
+      goto('/login');
+      return;
+    }
     manager.loadArticles();
   });
+
+  // ログアウト処理
+  async function signOut() {
+    await supabase.auth.signOut();
+    goto('/login');
+  }
+
+  async function goToMypage() {
+    goto('/settings');
+  }
 </script>
 
 <header class="mb-8 flex flex-col items-center justify-center gap-5">
@@ -47,12 +65,14 @@
       />
     </div>
     <button
-      class="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white bg-red-200 shadow-sm transition-opacity hover:opacity-80"
-      aria-label="send-button-user-page"
+      onclick={goToMypage}
+      class="bg-liner-to-br h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white bg-red-200 shadow-sm transition-transform hover:scale-105"
+      title="マイページへ"
+      aria-label="logout"
     >
-      <div
-        class="bg-liner-to-br flex h-full w-full items-center justify-center text-xs font-bold text-white"
-      ></div>
+      <div class="flex h-full w-full items-center justify-center text-lg font-bold text-white">
+        {authManager.user?.email?.[0].toUpperCase() || 'U'}
+      </div>
     </button>
   </div>
 
@@ -76,39 +96,40 @@
       href="/settings"
       class="flex flex-col items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-slate-600 shadow-sm transition-transform hover:scale-105"
     >
-      <div class="flex items-center gap-5">
+      <button class="flex items-center gap-5" aria-label="詳細設定ページへ" onclick={goToMypage}>
         詳細設定へ
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
         </svg>
-      </div>
+      </button>
     </a>
   </div>
 </header>
-
-<div class="flex flex-col gap-4 pb-24">
-  {#each manager.articles as article (article.id)}
-    <ArticleCard {article} onToggleBookmark={(id) => manager.toggleBookmark(id)} />
-  {/each}
-</div>
 
 <div class="flex flex-col gap-4 pb-24">
   {#if manager.isLoading}
     <div class="animate-pulse py-10 text-center font-bold text-slate-400">
       最新のニュースを拾い集めています...
     </div>
-  {:else if manager.articles.length === 0}
+  {:else if manager.filteredArticles.length === 0}
     <div class="rounded-2xl bg-white p-8 text-center shadow-sm">
-      <p class="mb-4 font-medium text-slate-500">まだニュースがありません。</p>
-      <a
-        href="/settings"
-        class="inline-block rounded-xl bg-slate-800 px-6 py-3 font-bold text-white transition-colors hover:bg-slate-700"
-      >
-        設定からRSSを追加する
-      </a>
+      {#if manager.activeTab === 'ストック'}
+        <p class="mb-2 font-bold text-slate-500">ストックした記事がありません</p>
+        <p class="text-sm font-medium text-slate-400">
+          気になった記事のしおりアイコンを押して保存しましょう。
+        </p>
+      {:else}
+        <p class="mb-4 font-bold text-slate-500">まだニュースがありません。</p>
+        <a
+          href="/settings"
+          class="inline-block rounded-xl bg-slate-800 px-6 py-3 font-bold text-white transition-colors hover:bg-slate-700"
+        >
+          設定からRSSを追加する
+        </a>
+      {/if}
     </div>
   {:else}
-    {#each manager.articles as article (article.id)}
+    {#each manager.filteredArticles as article (article.id)}
       <ArticleCard {article} onToggleBookmark={(id) => manager.toggleBookmark(id)} />
     {/each}
   {/if}
