@@ -9,13 +9,34 @@
   const manager = new ArticleManager();
   let searchQuery = $state('');
 
-  onMount(() => {
-    // ログインしていなければログイン画面へ弾く
-    if (!authManager.user) {
-      goto('/login');
-      return;
+  // 🚨 悪さをしていた $effect でのログイン判定（goto）を完全に削除しました
+
+  // 💡 データのロードだけは、状態が揃った時に実行されるように残します
+  $effect(() => {
+    if (authManager.isInitialized && authManager.user) {
+      if (manager.articles.length === 0 && !manager.isLoading) {
+        manager.loadArticles();
+      }
     }
-    manager.loadArticles();
+  });
+
+  // 💡 代わりに onMount で、Supabaseのストレージ読み込み完了を確実に待ちます
+  onMount(async () => {
+    // getSession() は、ローカルの鍵を確実に読み込むまで待機(await)してくれます
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      // 完全に読み込み終わって、それでもセッションが無い場合のみ弾く
+      goto('/login');
+    } else {
+      // セッションが存在すれば、authManagerの状態を確実に同期させる
+      if (!authManager.user) {
+        authManager.user = session.user;
+      }
+      authManager.isInitialized = true;
+    }
   });
 
   // 詳細設定ページ

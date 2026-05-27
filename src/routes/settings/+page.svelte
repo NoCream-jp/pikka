@@ -1,6 +1,8 @@
 <script lang="ts">
   import { supabase } from '$lib/supabaseClient';
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { authManager } from '$lib/states/auth.svelte';
 
   // 状態管理（型を定義して安全にします）
   type Feed = { id: number; title: string; url: string };
@@ -8,13 +10,32 @@
   let rssFeeds = $state<Feed[]>([]);
   let newFeedUrl = $state('');
   let isLoading = $state(true);
+  let isAuthenticated = $state(true);
 
   // 画面が開かれた時に Supabase からデータを取得する
   onMount(async () => {
+    // 💡 Supabaseのストレージ読み込み完了を確実に待つ
+    const {
+      data: { session }
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      goto('/login');
+      return;
+    }
+
+    // ユーザー状態の同期
+    if (!authManager.user) {
+      authManager.user = session.user;
+    }
+    authManager.isInitialized = true;
+    isAuthenticated = false; // 認証完了
+
+    // 認証が通った後で、フィードデータを取得する
     const { data, error } = await supabase
       .from('feeds')
       .select('*')
-      .order('created_at', { ascending: false }); // 新しい順
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('取得エラー:', error.message);
