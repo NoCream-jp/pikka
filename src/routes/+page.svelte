@@ -9,32 +9,25 @@
   const manager = new ArticleManager();
   let searchQuery = $state('');
 
-  // データのロードだけは、状態が揃った時に実行されるように残します
-  $effect(() => {
-    if (authManager.isInitialized && authManager.user) {
-      if (manager.articles.length === 0 && !manager.isLoading) {
-        manager.loadArticles();
-      }
-    }
-  });
-
-  // 代わりに onMount で、Supabaseのストレージ読み込み完了を確実に待ちます
   onMount(async () => {
-    // getSession() は、ローカルの鍵を確実に読み込むまで待機(await)してくれます
+    // ログイン状態を確実に確認
     const {
       data: { session }
     } = await supabase.auth.getSession();
 
     if (!session) {
-      // 完全に読み込み終わって、それでもセッションが無い場合のみ弾く
       goto('/login');
-    } else {
-      // セッションが存在すれば、authManagerの状態を確実に同期させる
-      if (!authManager.user) {
-        authManager.user = session.user;
-      }
-      authManager.isInitialized = true;
+      return; // リダイレクトしたらここで処理終了
     }
+
+    // ログイン確認できたら状態をセット
+    if (!authManager.user) {
+      authManager.user = session.user;
+    }
+    authManager.isInitialized = true;
+
+    //  ログイン確定後にニュース取得を実行
+    manager.loadArticles();
   });
 
   // 詳細設定ページ
