@@ -41,7 +41,11 @@
 
   <div class="flex shrink-0 items-center gap-2 pr-2">
     <button
-      onclick={() => onToggleBookmark(article.id)}
+      onclick={(e) => {
+        e.preventDefault(); // ボタン自体のデフォルトの挙動を防ぐ
+        e.stopPropagation(); // 親の <a> タグへクリックイベントが伝わるのを完全に止める
+        onToggleBookmark(article.id); // 本来のブックマーク処理を実行
+      }}
       class="flex h-10 w-10 items-center justify-center rounded-full transition-colors {article.isBookmarked
         ? 'bg-yellow-100 text-yellow-500'
         : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}"
