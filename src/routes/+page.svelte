@@ -9,9 +9,7 @@
   const manager = new ArticleManager();
   let searchQuery = $state('');
 
-  // 🚨 悪さをしていた $effect でのログイン判定（goto）を完全に削除しました
-
-  // 💡 データのロードだけは、状態が揃った時に実行されるように残します
+  // データのロードだけは、状態が揃った時に実行されるように残します
   $effect(() => {
     if (authManager.isInitialized && authManager.user) {
       if (manager.articles.length === 0 && !manager.isLoading) {
@@ -20,7 +18,7 @@
     }
   });
 
-  // 💡 代わりに onMount で、Supabaseのストレージ読み込み完了を確実に待ちます
+  // 代わりに onMount で、Supabaseのストレージ読み込み完了を確実に待ちます
   onMount(async () => {
     // getSession() は、ローカルの鍵を確実に読み込むまで待機(await)してくれます
     const {
@@ -51,7 +49,7 @@
 </script>
 
 <header class="mb-8 flex flex-col items-center justify-center gap-5">
-  <h1 class="relative text-5xl font-extrabold tracking-tight text-slate-600/60">pikka</h1>
+  <img src="/logo_title.svg" alt="pikka" class="h-10 w-auto" />
   <p class="mt-2 text-sm font-medium text-slate-600">知りたいニュースを、知りたいときに。</p>
 
   <div class="flex items-center gap-4">
