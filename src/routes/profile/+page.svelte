@@ -11,6 +11,7 @@
   // ユーザーネーム編集用の状態
   let isEditing = $state(false);
   let username = $state('');
+  let isSaving = $state(false);
 
   onMount(async () => {
     const {
@@ -27,6 +28,13 @@
     // メールアドレスの @ より前を暫定のユーザーネームにする
     username = authManager.user.email?.split('@')[0] || 'ユーザー';
 
+    // 名前変更のため、Supabaseから保存された名前を取得
+    // なければメールアドレスの前半
+    username =
+      authManager.user.user_metadata?.username ||
+      authManager.user.email?.split('@')[0] ||
+      'ユーザー';
+
     // 記事（ストック表示用）のロード
     manager.loadArticles();
     // マイページを開いたときはデフォルトで「ストック」タブ状態にする
@@ -40,8 +48,30 @@
   }
 
   // ユーザーネームの保存（拡張用：今回はフロントの状態変更のみ、今後DB連携可能）
-  function saveUsername() {
-    isEditing = false;
+  async function saveUsername() {
+    if (!username.trim() || isSaving) return; // 空文字や連打をブロック
+    isSaving = true;
+
+    try {
+      // Supabase の user_metadata に 'username' というキーで保存
+      const { data, error } = await supabase.auth.updateUser({
+        data: { username: username }
+      });
+
+      if (error) throw error;
+
+      // 保存が成功したら、アプリ全体のユーザー状態も最新に同期する
+      if (data.user) {
+        authManager.user = data.user;
+      }
+
+      isEditing = false; // 編集モードを終了
+    } catch (err) {
+      console.error('ユーザー名の更新に失敗しました:', err);
+      alert('ユーザー名の保存に失敗しました。');
+    } finally {
+      isSaving = false;
+    }
   }
 </script>
 
@@ -86,9 +116,10 @@
               />
               <button
                 onclick={saveUsername}
+                disabled={isSaving}
                 class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-700"
               >
-                保存
+                {isSaving ? '保存中...' : '保存'}
               </button>
             </div>
           {:else}
