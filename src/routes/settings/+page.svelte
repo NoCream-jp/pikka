@@ -10,15 +10,14 @@
 
   let rssFeeds = $state<Feed[]>([]);
   let inputFeedUrl = $state('');
-  let newFeedUrl = $state('');
   let isLoading = $state(true);
   let isAuthenticated = $state(true);
   let isSearching = $state(false);
 
   // Svelteのサジェスト候補機能に頼る
-  let suggestions = $derived(() => {
-    const query = newFeedUrl.trim().toLowerCase();
-    if (!query || query.startsWith('http')) return []; // 空、またはURLを入力中の場合はサジェストしない
+  let suggestions = $derived.by(() => {
+    const query = inputFeedUrl.trim().toLowerCase();
+    if (!query || query.startsWith('http')) return [];
 
     return popularFeeds.filter(
       (feed) =>
@@ -64,8 +63,8 @@
   async function addFeed(event: Event | null, directUrl: string = '') {
     if (event) event.preventDefault();
 
-    // サジェストをクリックした場合は directUrl を使い、普通に入力した場合は newFeedUrl を使う
-    let targetUrl = directUrl || newFeedUrl.trim();
+    // サジェストをクリックした場合は directUrl を使い、普通に入力した場合は inputFeedUrl を使う
+    let targetUrl = directUrl || inputFeedUrl.trim();
     if (!targetUrl) return;
 
     isLoading = true;
@@ -104,7 +103,7 @@
 
       if (data) {
         rssFeeds = [data[0], ...rssFeeds];
-        newFeedUrl = ''; // 追加に成功したら入力欄を空にする
+        inputFeedUrl = ''; // 追加に成功したら入力欄を空にする
       }
     } catch (err) {
       console.error(err);
@@ -117,7 +116,6 @@
 
   // Supabase からフィードを削除する関数
   async function removeFeed(id: number) {
-    // 画面上のリストから即座に消す（UX向上のため、通信を待たずにUIを更新）
     const previousFeeds = [...rssFeeds];
     rssFeeds = rssFeeds.filter((feed) => feed.id !== id);
 
@@ -167,23 +165,51 @@
       登録中のRSSフィード
     </h2>
 
-    <form onsubmit={addFeed} class="mb-6 flex gap-3">
-      <input
-        type="url"
-        bind:value={newFeedUrl}
-        placeholder="https://zenn.dev/topics/svelte/feed"
-        class="h-12 flex-1 rounded-xl border-none bg-white px-4 font-medium text-slate-700 shadow-sm transition-shadow outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-teal-400/50"
-        required
-      />
-      <button
-        type="submit"
-        disabled={isLoading}
-        class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
-      >
-        追加する
-      </button>
-    </form>
+    <div class="relative mb-6">
+      <form onsubmit={(e) => addFeed(e)} class="flex gap-3">
+        <input
+          type="text"
+          bind:value={inputFeedUrl}
+          placeholder="サイト名（例: Zenn）または URL"
+          class="h-12 flex-1 rounded-xl border-none bg-white px-4 font-medium text-slate-700 shadow-sm transition-shadow outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-teal-400/50"
+          required
+        />
+        <button
+          type="submit"
+          disabled={isLoading}
+          class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
+        >
+          {isSearching ? '検索中...' : '追加'}
+        </button>
+      </form>
 
+      {#if suggestions.length > 0}
+        <div
+          class="absolute top-14 left-0 z-10 w-full overflow-hidden rounded-xl border border-slate-100 bg-white shadow-lg"
+        >
+          <p
+            class="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-400"
+          >
+            おすすめのメディア
+          </p>
+
+          {#each suggestions as feed}
+            <button
+              type="button"
+              onclick={() => addFeed(null, feed.url)}
+              class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-teal-50"
+            >
+              <span class="font-bold text-slate-700">{feed.name}</span>
+              <span class="rounded-full bg-teal-100 px-2 py-1 text-xs font-medium text-teal-600"
+                >追加する</span
+              >
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- ローディング中の処理と空だった場合の -->
     <div class="flex flex-col gap-3">
       {#if isLoading}
         <div
