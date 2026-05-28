@@ -3,18 +3,32 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authManager } from '$lib/states/auth.svelte';
+  import { popularFeeds } from '$lib/data/popularFeeds'; // ハードコーディングした辞書
 
   // 状態管理（型を定義して安全にします）
   type Feed = { id: number; title: string; url: string };
 
   let rssFeeds = $state<Feed[]>([]);
+  let inputFeedUrl = $state('');
   let newFeedUrl = $state('');
   let isLoading = $state(true);
   let isAuthenticated = $state(true);
+  let isSearching = $state(false);
+
+  // Svelteのサジェスト候補機能に頼る
+  let suggestions = $derived(() => {
+    const query = newFeedUrl.trim().toLowerCase();
+    if (!query || query.startsWith('http')) return []; // 空、またはURLを入力中の場合はサジェストしない
+
+    return popularFeeds.filter(
+      (feed) =>
+        feed.name.toLowerCase().includes(query) || feed.keywords.some((k) => k.includes(query))
+    );
+  });
 
   // 画面が開かれた時に Supabase からデータを取得する
   onMount(async () => {
-    // 💡 Supabaseのストレージ読み込み完了を確実に待つ
+    // Supabaseのストレージ読み込み完了を確実に待つ
     const {
       data: { session }
     } = await supabase.auth.getSession();
@@ -46,39 +60,58 @@
   });
 
   // Supabase へフィードを追加する関数
-  async function addFeed(event: Event) {
-    event.preventDefault();
-    if (!newFeedUrl.trim()) return;
+  // フォーム送信時の処理（オートディスカバリー対応）
+  async function addFeed(event: Event | null, directUrl: string = '') {
+    if (event) event.preventDefault();
 
-    isLoading = true; // 読み込み中のUIを表示
+    // サジェストをクリックした場合は directUrl を使い、普通に入力した場合は newFeedUrl を使う
+    let targetUrl = directUrl || newFeedUrl.trim();
+    if (!targetUrl) return;
+
+    isLoading = true;
+    isSearching = true;
 
     try {
-      // 1. さきほど自作したAPIを叩いて、RSSの本物のデータを取得する
-      const response = await fetch(`/api/rss?url=${encodeURIComponent(newFeedUrl)}`);
+      // もし入力されたのが http から始まる「普通のURL」で、/feed 等で終わっていなければ、APIで探しに行く
+      if (
+        targetUrl.startsWith('http') &&
+        !targetUrl.includes('.xml') &&
+        !targetUrl.includes('feed') &&
+        !targetUrl.includes('rss')
+      ) {
+        const discoverRes = await fetch(`/api/discover?url=${encodeURIComponent(targetUrl)}`);
+        if (discoverRes.ok) {
+          const data = await discoverRes.json();
+          if (data.feedUrl) {
+            targetUrl = data.feedUrl; // 本物のRSS URLにすり替える
+          }
+        }
+      }
+
+      // あとは既存の処理と同じ（/api/rss を叩いてタイトルを取得し、Supabaseへ保存）
+      const response = await fetch(`/api/rss?url=${encodeURIComponent(targetUrl)}`);
       if (!response.ok) throw new Error('RSSの取得に失敗しました');
 
       const feedData = await response.json();
-
-      // 取得したサイト名（なければ「タイトルなし」）
       const realTitle = feedData.title || 'タイトルなし';
 
-      // 2. 取得した本物のタイトルと一緒に Supabase に保存
       const { data, error } = await supabase
         .from('feeds')
-        .insert([{ url: newFeedUrl, title: realTitle }])
+        .insert([{ url: targetUrl, title: realTitle }])
         .select();
 
       if (error) throw error;
 
       if (data) {
-        rssFeeds = [data[0], ...rssFeeds]; // 画面のリストに追加
-        newFeedUrl = ''; // 入力欄をクリア
+        rssFeeds = [data[0], ...rssFeeds];
+        newFeedUrl = ''; // 追加に成功したら入力欄を空にする
       }
     } catch (err) {
       console.error(err);
-      alert('エラーが発生しました。URLが正しいか、すでに登録されていないか確認してください。');
+      alert('エラー: 有効なRSSフィードが見つからないか、既に登録されています。');
     } finally {
-      isLoading = false; // 読み込み中のUIを解除
+      isLoading = false;
+      isSearching = false;
     }
   }
 
