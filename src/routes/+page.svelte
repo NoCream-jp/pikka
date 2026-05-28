@@ -83,7 +83,9 @@
       aria-label="logout"
     >
       <div class="flex h-full w-full items-center justify-center text-lg font-bold text-white">
-        {authManager.user?.email?.[0].toUpperCase() || 'U'}
+        {authManager.user?.user_metadata?.username?.[0].toUpperCase() ||
+          authManager.user?.email?.[0].toUpperCase() ||
+          'U'}
       </div>
     </button>
   </div>
