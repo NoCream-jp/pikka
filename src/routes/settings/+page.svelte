@@ -10,11 +10,14 @@
 
   let rssFeeds = $state<Feed[]>([]);
   let inputFeedUrl = $state('');
-  let isLoading = $state(true);
   let isAuthenticated = $state(true);
+
+  // 連打させたくないので今の状態を持たせてそれによって挙動を変える
+  let isLoading = $state(true);
   let isSearching = $state(false);
 
   // Svelteのサジェスト候補機能に頼る
+  // derived.byで線形検索してなければサーバー側にAPIを叩かせてfetchしたい
   let suggestions = $derived.by(() => {
     const query = inputFeedUrl.trim().toLowerCase();
     if (!query || query.startsWith('http')) return [];
