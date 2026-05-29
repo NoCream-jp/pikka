@@ -3,18 +3,34 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { authManager } from '$lib/states/auth.svelte';
+  import { popularFeeds } from '$lib/data/popularFeeds'; // ハードコーディングした辞書
 
   // 状態管理（型を定義して安全にします）
   type Feed = { id: number; title: string; url: string };
 
   let rssFeeds = $state<Feed[]>([]);
-  let newFeedUrl = $state('');
-  let isLoading = $state(true);
+  let inputFeedUrl = $state('');
   let isAuthenticated = $state(true);
+
+  // 連打させたくないので今の状態を持たせてそれによって挙動を変える
+  let isLoading = $state(true);
+  let isSearching = $state(false);
+
+  // Svelteのサジェスト候補機能に頼る
+  // derived.byで線形検索してなければサーバー側にAPIを叩かせてfetchしたい
+  let suggestions = $derived.by(() => {
+    const query = inputFeedUrl.trim().toLowerCase();
+    if (!query || query.startsWith('http')) return [];
+
+    return popularFeeds.filter(
+      (feed) =>
+        feed.name.toLowerCase().includes(query) || feed.keywords.some((k) => k.includes(query))
+    );
+  });
 
   // 画面が開かれた時に Supabase からデータを取得する
   onMount(async () => {
-    // 💡 Supabaseのストレージ読み込み完了を確実に待つ
+    // Supabaseのストレージ読み込み完了を確実に待つ
     const {
       data: { session }
     } = await supabase.auth.getSession();
@@ -46,45 +62,63 @@
   });
 
   // Supabase へフィードを追加する関数
-  async function addFeed(event: Event) {
-    event.preventDefault();
-    if (!newFeedUrl.trim()) return;
+  // フォーム送信時の処理（オートディスカバリー対応）
+  async function addFeed(event: Event | null, directUrl: string = '') {
+    if (event) event.preventDefault();
 
-    isLoading = true; // 読み込み中のUIを表示
+    // サジェストをクリックした場合は directUrl を使い、普通に入力した場合は inputFeedUrl を使う
+    let targetUrl = directUrl || inputFeedUrl.trim();
+    if (!targetUrl) return;
+
+    isLoading = true;
+    isSearching = true;
 
     try {
-      // 1. さきほど自作したAPIを叩いて、RSSの本物のデータを取得する
-      const response = await fetch(`/api/rss?url=${encodeURIComponent(newFeedUrl)}`);
+      // もし入力されたのが http から始まる「普通のURL」で、/feed 等で終わっていなければ、APIで探しに行く
+      if (
+        targetUrl.startsWith('http') &&
+        !targetUrl.includes('.xml') &&
+        !targetUrl.includes('feed') &&
+        !targetUrl.includes('rss')
+      ) {
+        const discoverRes = await fetch(`/api/discover?url=${encodeURIComponent(targetUrl)}`);
+        if (discoverRes.ok) {
+          const data = await discoverRes.json();
+          if (data.feedUrl) {
+            targetUrl = data.feedUrl; // 本物のRSS URLにすり替える
+          }
+        }
+      }
+
+      // あとは既存の処理と同じ（/api/rss を叩いてタイトルを取得し、Supabaseへ保存）
+      const response = await fetch(`/api/rss?url=${encodeURIComponent(targetUrl)}`);
       if (!response.ok) throw new Error('RSSの取得に失敗しました');
 
       const feedData = await response.json();
-
-      // 取得したサイト名（なければ「タイトルなし」）
       const realTitle = feedData.title || 'タイトルなし';
 
-      // 2. 取得した本物のタイトルと一緒に Supabase に保存
       const { data, error } = await supabase
         .from('feeds')
-        .insert([{ url: newFeedUrl, title: realTitle }])
+        .insert([{ url: targetUrl, title: realTitle }])
         .select();
 
       if (error) throw error;
 
       if (data) {
-        rssFeeds = [data[0], ...rssFeeds]; // 画面のリストに追加
-        newFeedUrl = ''; // 入力欄をクリア
+        rssFeeds = [data[0], ...rssFeeds];
+        inputFeedUrl = ''; // 追加に成功したら入力欄を空にする
       }
     } catch (err) {
       console.error(err);
-      alert('エラーが発生しました。URLが正しいか、すでに登録されていないか確認してください。');
+      alert('エラー: 有効なRSSフィードが見つからないか、既に登録されています。');
     } finally {
-      isLoading = false; // 読み込み中のUIを解除
+      isLoading = false;
+      isSearching = false;
     }
   }
 
   // Supabase からフィードを削除する関数
   async function removeFeed(id: number) {
-    // 画面上のリストから即座に消す（UX向上のため、通信を待たずにUIを更新）
     const previousFeeds = [...rssFeeds];
     rssFeeds = rssFeeds.filter((feed) => feed.id !== id);
 
@@ -134,23 +168,51 @@
       登録中のRSSフィード
     </h2>
 
-    <form onsubmit={addFeed} class="mb-6 flex gap-3">
-      <input
-        type="url"
-        bind:value={newFeedUrl}
-        placeholder="https://zenn.dev/topics/svelte/feed"
-        class="h-12 flex-1 rounded-xl border-none bg-white px-4 font-medium text-slate-700 shadow-sm transition-shadow outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-teal-400/50"
-        required
-      />
-      <button
-        type="submit"
-        disabled={isLoading}
-        class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
-      >
-        追加する
-      </button>
-    </form>
+    <div class="relative mb-6">
+      <form onsubmit={(e) => addFeed(e)} class="flex gap-3">
+        <input
+          type="text"
+          bind:value={inputFeedUrl}
+          placeholder="サイト名（例: Zenn）または URL"
+          class="h-12 flex-1 rounded-xl border-none bg-white px-4 font-medium text-slate-700 shadow-sm transition-shadow outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-teal-400/50"
+          required
+        />
+        <button
+          type="submit"
+          disabled={isLoading}
+          class="flex h-12 items-center gap-2 rounded-xl bg-slate-800 px-6 font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:opacity-50"
+        >
+          {isSearching ? '検索中...' : '追加'}
+        </button>
+      </form>
 
+      {#if suggestions.length > 0}
+        <div
+          class="absolute top-14 left-0 z-10 w-full overflow-hidden rounded-xl border border-slate-100 bg-white shadow-lg"
+        >
+          <p
+            class="border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-400"
+          >
+            おすすめのメディア
+          </p>
+
+          {#each suggestions as feed}
+            <button
+              type="button"
+              onclick={() => addFeed(null, feed.url)}
+              class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-teal-50"
+            >
+              <span class="font-bold text-slate-700">{feed.name}</span>
+              <span class="rounded-full bg-teal-100 px-2 py-1 text-xs font-medium text-teal-600"
+                >追加する</span
+              >
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <!-- ローディング中の処理と空だった場合の -->
     <div class="flex flex-col gap-3">
       {#if isLoading}
         <div
