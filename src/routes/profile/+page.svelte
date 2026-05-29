@@ -36,7 +36,7 @@
       'ユーザー';
 
     // 記事（ストック表示用）のロード
-    manager.loadArticles();
+    manager.loadBookmarkedArticles();
     // マイページを開いたときはデフォルトで「ストック」タブ状態にする
     manager.activeTab = 'ストック';
   });

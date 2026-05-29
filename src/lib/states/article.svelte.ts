@@ -1,51 +1,48 @@
 import { supabase } from '$lib/supabaseClient';
+import { authManager } from '$lib/states/auth.svelte'; // 👈 ユーザーIDを取得するために追加
 
-// 実際のRSSデータに合わせた型定義
 export type Article = {
-  id: string; // 記事のユニークID（URLなどを流用）
-  title: string; // 記事タイトル
-  url: string; // 記事のリンク
-  siteName: string; // 取得元のサイト名
-  publishedAt: number; // 公開日時（ソート用に数値化）
-  isBookmarked: boolean; // ストックされたかどうか
-  thumbnailUrl: string; // サムネURL
+  id: string;
+  title: string;
+  url: string;
+  siteName: string;
+  publishedAt: number;
+  isBookmarked: boolean;
+  thumbnailUrl: string;
 };
 
 export class ArticleManager {
-  activeTab = $state('新着'); // デフォルトを新着に
+  activeTab = $state('新着');
   tabs = ['新着', 'おすすめ', 'ストック'];
 
   articles = $state<Article[]>([]);
-  isLoading = $state(true); // 読み込み中の状態を追加
+  isLoading = $state(true);
 
-  // 追加：現在選択されているタブに合わせて、表示する記事を絞り込むゲッター
   get filteredArticles() {
     if (this.activeTab === 'ストック') {
-      // ストックタブの時は、しおりがついている記事だけを返す
       return this.articles.filter((article) => article.isBookmarked);
     }
-    // おすすめタブのロジックは今後の拡張用に一旦そのまま返す
     if (this.activeTab === 'おすすめ') {
       return this.articles;
     }
-    // デフォルト（新着タブ）の時はすべて返す
     return this.articles;
   }
 
+  // トップページ用のRSS読み込み機能
   async loadArticles() {
     this.isLoading = true;
     try {
-      // 1. フィード一覧と、保存済みのしおり一覧を同時に取得（高速化）
       const [feedsRes, bookmarksRes] = await Promise.all([
         supabase.from('feeds').select('*'),
-        supabase.from('bookmarks').select('article_id')
+        // article_id ではなく url を取得する
+        supabase.from('bookmarks').select('url')
       ]);
 
       if (feedsRes.error) throw feedsRes.error;
       const feeds = feedsRes.data;
 
-      // 保存されているしおりのIDリスト（検索を速くするためにSetを使う）
-      const bookmarkedIds = new Set(bookmarksRes.data?.map((b) => b.article_id) || []);
+      // しおりがついているかの判定を url ベースに変更
+      const bookmarkedUrls = new Set(bookmarksRes.data?.map((b) => b.url) || []);
 
       if (!feeds || feeds.length === 0) {
         this.articles = [];
@@ -59,15 +56,16 @@ export class ArticleManager {
           const data = await res.json();
 
           return (data.items || []).map((item: any) => {
-            const articleId = item.guid || item.link || Math.random().toString();
+            const articleUrl = item.link || '';
+            const articleId = item.guid || articleUrl || Math.random().toString();
             return {
               id: articleId,
               title: item.title || '無題',
-              url: item.link || '',
+              url: articleUrl,
               siteName: feed.title,
               publishedAt: new Date(item.pubDate || item.isoDate || Date.now()).getTime(),
-              // 取得した記事IDが、DBのしおりリストに含まれていれば true にする
-              isBookmarked: bookmarkedIds.has(articleId),
+              // 💡 修正: urlを使ってしおりの有無を判定
+              isBookmarked: bookmarkedUrls.has(articleUrl),
               thumbnailUrl: item.thumbnailUrl || ''
             };
           });
@@ -86,35 +84,65 @@ export class ArticleManager {
     }
   }
 
-  //  既存の toggleBookmark() を以下に丸ごと差し替えます
+  // マイページ（ストック一覧）専用の直接読み込みメソッド（リンク切れ対策）
+  async loadBookmarkedArticles() {
+    this.isLoading = true;
+    try {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .order('created_at', { ascending: false });
 
+      if (error) throw error;
+
+      if (data) {
+        this.articles = data.map((b) => ({
+          id: b.url, // マイページではURLをIDとして扱う
+          title: b.title,
+          url: b.url,
+          siteName: b.site_name,
+          publishedAt: Date.now(),
+          isBookmarked: true,
+          thumbnailUrl: b.thumbnail_url || ''
+        }));
+      } else {
+        this.articles = [];
+      }
+    } catch (err) {
+      console.error('ストック記事の直接読み込みに失敗:', err);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  // ブックマーク（しおり）の切り替え処理
   async toggleBookmark(id: string) {
-    // 対象の記事を探す
     const article = this.articles.find((a) => a.id === id);
     if (!article) return;
 
     const isCurrentlyBookmarked = article.isBookmarked;
 
-    // UX向上: 通信を待たずに、画面の見た目を先にサクッと切り替える（Optimistic UI）
+    // UX向上: 通信を待たずに、画面の見た目を先にサクッと切り替える
     this.articles = this.articles.map((a) =>
       a.id === id ? { ...a, isBookmarked: !isCurrentlyBookmarked } : a
     );
 
     try {
       if (!isCurrentlyBookmarked) {
-        // しおりを付ける（DBに保存）
+        // 修正: DBの構造に合わせて、url を主軸にして保存する
         const { error } = await supabase.from('bookmarks').insert([
           {
-            article_id: article.id,
+            user_id: authManager.user?.id, // 必須：誰のストックか
+            url: article.url, // 必須：article_id ではなく url
             title: article.title,
-            url: article.url,
-            site_name: article.siteName
+            site_name: article.siteName,
+            thumbnail_url: article.thumbnailUrl
           }
         ]);
         if (error) throw error;
       } else {
-        // しおりを外す（DBから削除）
-        const { error } = await supabase.from('bookmarks').delete().eq('article_id', article.id);
+        // 削除時も url を条件にする
+        const { error } = await supabase.from('bookmarks').delete().eq('url', article.url);
         if (error) throw error;
       }
     } catch (err) {
@@ -127,14 +155,12 @@ export class ArticleManager {
     }
 
     const targetArticle = this.articles.find((a) => a.id === id);
-    // 追加: もしブックマークが「ON」になった時だけ、裏側でそっとアーカイブ依頼を投げる
     if (targetArticle && targetArticle.isBookmarked) {
       fetch('/api/archive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: targetArticle.url })
       }).catch((err) => {
-        // ユーザーの画面操作を邪魔しないよう、エラーが出ても裏側で握りつぶす
         console.error('アーカイブ依頼エラー:', err);
       });
     }
