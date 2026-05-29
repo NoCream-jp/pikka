@@ -125,5 +125,18 @@ export class ArticleManager {
         a.id === id ? { ...a, isBookmarked: isCurrentlyBookmarked } : a
       );
     }
+
+    const targetArticle = this.articles.find((a) => a.id === id);
+    // 追加: もしブックマークが「ON」になった時だけ、裏側でそっとアーカイブ依頼を投げる
+    if (targetArticle && targetArticle.isBookmarked) {
+      fetch('/api/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: targetArticle.url })
+      }).catch((err) => {
+        // ユーザーの画面操作を邪魔しないよう、エラーが出ても裏側で握りつぶす
+        console.error('アーカイブ依頼エラー:', err);
+      });
+    }
   }
 }
