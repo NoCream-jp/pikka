@@ -26,7 +26,7 @@
     }
     authManager.isInitialized = true;
 
-    //  ログイン確定後にニュース取得を実行
+    // ログイン確定後にニュース取得を実行
     manager.loadArticles();
   });
 
@@ -38,6 +38,14 @@
   // マイページ
   async function goToProfile() {
     goto('/profile');
+  }
+
+  // タブがクリックされた時に、AIレコメンド関数などを呼び分ける
+  function handleTabClick(tab: string) {
+    manager.activeTab = tab;
+    if (tab === '新着') manager.loadArticles();
+    else if (tab === 'おすすめ') manager.loadRecommendedArticles();
+    else if (tab === 'ストック') manager.loadBookmarkedArticles();
   }
 </script>
 
@@ -94,7 +102,7 @@
     <div class="flex rounded-full bg-white p-1 shadow-sm">
       {#each manager.tabs as tab}
         <button
-          onclick={() => (manager.activeTab = tab)}
+          onclick={() => handleTabClick(tab)}
           class="rounded-full px-6 py-2 text-sm font-bold transition-colors {manager.activeTab ===
           tab
             ? 'bg-slate-200 text-slate-800'
@@ -144,7 +152,11 @@
     </div>
   {:else}
     {#each manager.filteredArticles as article (article.id)}
-      <ArticleCard {article} onToggleBookmark={(id) => manager.toggleBookmark(id)} />
+      <ArticleCard
+        {article}
+        onToggleBookmark={(id) => manager.toggleBookmark(id)}
+        onArticleClick={(url) => manager.trackArticleClick(url)}
+      />
     {/each}
   {/if}
 </div>
