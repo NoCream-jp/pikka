@@ -3,15 +3,24 @@
 
   let {
     article,
-    onToggleBookmark
+    onToggleBookmark,
+    onArticleClick
   }: {
     article: Article;
     onToggleBookmark: (id: string) => void;
+    onArticleClick: (url: string) => void;
   } = $props();
 </script>
 
 <div class="flex flex-col gap-1 rounded-2xl bg-white shadow-sm transition-shadow hover:shadow-md">
-  <a href={article.url} aria-label="button to article" class="flex items-center gap-4 p-3">
+  <a
+    href={article.url}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="button to article"
+    class="flex items-center gap-4 p-3"
+    onclick={() => onArticleClick(article.url)}
+  >
     {#if article.thumbnailUrl}
       <img
         src={article.thumbnailUrl}
@@ -46,7 +55,7 @@
         class="flex h-10 w-10 items-center justify-center rounded-full transition-colors {article.isBookmarked
           ? 'bg-yellow-100 text-yellow-500'
           : 'bg-slate-100 text-slate-300 hover:bg-slate-200'}"
-        aria-label="button"
+        aria-label="bookmark button"
       >
         <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
